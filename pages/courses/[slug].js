@@ -10,7 +10,7 @@ export default function Course({ course }) {
         <CourseHero
           title={course.title}
           description={course.description}
-          image={course.image}
+          image={course.coverImage}
         />
       </div>
       <KeyPoints points={course.wsl} />
