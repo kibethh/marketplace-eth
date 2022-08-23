@@ -1,29 +1,35 @@
-import { useEffect } from "react";
-import useSWR from "swr";
+
+
+import { useEffect } from "react"
+import useSWR from "swr"
 
 const adminAddresses = {
-  "0xf32f8afa857c4ed8add939b6a1cc6bb73cb13cfb327e9c3c17d70b67f0de3420": true,
-};
+  "0xa075585816515fa3c6145fdd41bb53b18628df720548c9dd22709df630cacdc6": true
+}
 
 export const handler = (web3, provider) => () => {
-  const { data, mutate, ...rest } = useSWR(
-    () => (web3 ? "web3/accounts" : null),
+
+  const { data, mutate, ...rest } = useSWR(() =>
+    web3 ? "web3/accounts" : null,
     async () => {
-      const accounts = await web3.eth.getAccounts();
-      return accounts[0];
+      const accounts = await web3.eth.getAccounts()
+      return accounts[0]
     }
-  );
+  )
 
   useEffect(() => {
     provider &&
-      provider.on("accountsChanged", (accounts) => mutate(accounts[0] ?? null));
-  }, [provider]);
+    provider.on("accountsChanged",
+      accounts => mutate(accounts[0] ?? null)
+    )
+  }, [provider])
+
   return {
-    account: {
-      data,
-      isAdmin: (data && adminAddresses[web3.utils.keccak256(data)]) ?? false,
-      mutate,
-      ...rest,
-    },
-  };
-};
+    data,
+    isAdmin: (
+      data &&
+      adminAddresses[web3.utils.keccak256(data)]) ?? false,
+    mutate,
+    ...rest
+  }
+}

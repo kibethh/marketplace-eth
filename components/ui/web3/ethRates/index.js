@@ -1,6 +1,5 @@
-import React from "react";
+export default function EthRates() {
 
-const EthRates = () => {
   return (
     <div className="grid grid-cols-4 mb-5">
       <div className="flex flex-1 items-stretch text-center">
@@ -20,7 +19,5 @@ const EthRates = () => {
         </div>
       </div>
     </div>
-  );
-};
-
-export default EthRates;
+  )
+}
