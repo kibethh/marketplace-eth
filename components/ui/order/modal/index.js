@@ -164,7 +164,7 @@ export default function OrderModal({ course, onClose, onSubmit }) {
               </div>
 
               {formState.message && (
-                <div className="p-4 my-3 text-red-700 bg-red-200 rounded-lg text-sm">
+                <div className="p-4 my-3 text-yellow-700 bg-yellow-200 rounded-lg text-sm">
                   {formState.message}
                 </div>
               )}
@@ -172,7 +172,10 @@ export default function OrderModal({ course, onClose, onSubmit }) {
           </div>
         </div>
         <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex">
-          <Button disabled={formState.isDisabled} onClick={() => onSubmit}>
+          <Button
+            disabled={formState.isDisabled}
+            onClick={() => onSubmit(order)}
+          >
             Submit
           </Button>
           <Button onClick={closeModal} variant="red">
