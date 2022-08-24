@@ -14,7 +14,7 @@ const fetcher = async (url) => {
 export const useEthPrice = () => {
   const { data, ...rest } = useSWR(URL, fetcher, { refreshInterval: 10000 });
 
-  const perItem = (data && COURSE_PRICE / Number(data)).toFixed(6) ?? null;
+  const perItem = (data && (COURSE_PRICE / Number(data)).toFixed(6)) ?? null;
 
   return { eth: { data, perItem, ...rest } };
 };
