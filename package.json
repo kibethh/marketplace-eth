@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@metamask/detect-provider": "^1.2.0",
-    "@truffle/contract": "^4.5.23",
     "next": "12.2.5",
     "react": "18.2.0",
     "react-dom": "18.2.0",
