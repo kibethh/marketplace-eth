@@ -9,6 +9,7 @@ contract("CourseMarketplace", (accounts) => {
   let _contract = null;
   let contractOwner = null;
   let buyer = null;
+  let courseHash = null;
 
   before(async () => {
     _contract = await CourseMarketplace.deployed();
@@ -17,14 +18,12 @@ contract("CourseMarketplace", (accounts) => {
   });
 
   describe("Purchase new course", () => {
-    let courseHash;
     before(async () => {
       await _contract.purchaseCourse(courseId, proof, {
         from: buyer,
         value,
       });
     });
-
     it("Can get the purchased course hash by index", async () => {
       const index = 0;
       courseHash = await _contract.getCourseHashAtIndex(index);
@@ -44,11 +43,6 @@ contract("CourseMarketplace", (accounts) => {
       const expectedIndex = 0;
       const expectedState = 0;
       const course = await _contract.getCourseByHash(courseHash);
-      //   id:id,
-      //   price:msg.value,
-      //   proof:proof,
-      //   owner:msg.sender,
-      //   state:State.Purchased
 
       assert.equal(course.id, expectedIndex, "indexes are not matching");
       assert.equal(
@@ -71,6 +65,34 @@ contract("CourseMarketplace", (accounts) => {
         course.state,
         expectedState,
         "course purchase states are not matching"
+      );
+    });
+  });
+
+  describe("Can activate purchased course", () => {
+    it("should not be able to activate course by non other than contract owner", async () => {
+      try {
+        await _contract.activateCourse(courseHash, {
+          from: buyer,
+          gas: web3.utils.toWei("0.01", "ether"),
+        });
+      } catch (error) {
+        assert(error, "expected an error but didn't get one");
+      }
+    });
+    it("should have a state of 'activated'", async () => {
+      await _contract.activateCourse(courseHash, {
+        from: contractOwner,
+        gas: web3.utils.toWei("0.01", "ether"),
+      });
+
+      const course = await _contract.getCourseByHash(courseHash);
+      const expectedState = 1;
+
+      assert.equal(
+        course.state,
+        expectedState,
+        "course state not matching 'activated' state"
       );
     });
   });
