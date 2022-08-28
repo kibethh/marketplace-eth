@@ -46,6 +46,7 @@ contract CourseMarketplace{
             if(msg.sender!=getContractOwner()){
                 revert OnlyOwner();
             }
+            // require(msg.sender==getContractOwner(),"Only owner has an access");
             _;
         }
 
@@ -59,6 +60,7 @@ contract CourseMarketplace{
         if(hasCourseOwnership(courseHash)){
             revert CourseHasOwner();
         }
+        // require(!hasCourseOwnership(courseHash),"Course already purchased!");
 
         uint id = totalOwnedCourses++;
         ownedCourseHash[id]=courseHash;
@@ -74,15 +76,18 @@ contract CourseMarketplace{
         }
 
         function activateCourse(bytes32 courseHash) external onlyOwner{
-          if( !isCourseCreated(courseHash)){
+          if(!isCourseCreated(courseHash)){
             revert CourseIsNotCreated();
           }
+        // require(isCourseCreated(courseHash),"Course is not created!");
         Course storage course = ownedCourses[courseHash];
-        course.state=State.Activated;
         if( course.state!=State.Purchased){
             revert InvalidState();
         }
 
+        // require(course.state==State.Purchased,"Invalid state for course activation");
+        course.state=State.Activated;
+        
 
         }
 

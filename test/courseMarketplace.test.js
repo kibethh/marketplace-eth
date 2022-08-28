@@ -32,11 +32,7 @@ contract("CourseMarketplace", (accounts) => {
         { type: "address", value: buyer }
       );
 
-      assert.equal(
-        courseHash,
-        expectedHash,
-        "Course hash should match with the expected hash!"
-      );
+      expect(courseHash).to.be.equal(expectedHash);
     });
 
     it("should match the data of the course purchased by buyer", async () => {
@@ -74,8 +70,8 @@ contract("CourseMarketplace", (accounts) => {
       try {
         await _contract.activateCourse(courseHash, {
           from: buyer,
-          gas: web3.utils.toWei("0.01", "ether"),
         });
+        assert(false);
       } catch (error) {
         assert(error, "expected an error but didn't get one");
       }
@@ -83,7 +79,6 @@ contract("CourseMarketplace", (accounts) => {
     it("should have a state of 'activated'", async () => {
       await _contract.activateCourse(courseHash, {
         from: contractOwner,
-        gas: web3.utils.toWei("0.01", "ether"),
       });
 
       const course = await _contract.getCourseByHash(courseHash);
