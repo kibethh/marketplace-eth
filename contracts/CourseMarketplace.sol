@@ -33,13 +33,15 @@ contract CourseMarketplace{
           
         }
 
+        ///Sender is not course owner!    
+        error SenderIsNotCourseOwner();
         ///Course already purchased!    
         error CourseHasOwner();
         ///Only owner has an access!    
         error OnlyOwner();
         ///Course is not created!  
         error CourseIsNotCreated();
-        ///Invalid state for course activation!  
+        ///Invalid state for course modification!  
         error InvalidState();
 
         modifier onlyOwner(){
@@ -75,6 +77,26 @@ contract CourseMarketplace{
 
         }
 
+
+        function repurchaseCourse(bytes32 courseHash) external payable{
+        if(!isCourseCreated(courseHash)){
+            revert CourseIsNotCreated();
+         }
+        if(!hasCourseOwnership(courseHash)){
+            revert SenderIsNotCourseOwner();
+
+        }
+
+        Course storage course = ownedCourses[courseHash];
+
+        if(course.state!=State.Deactivated){
+            revert InvalidState();
+        }
+        course.state=State.Purchased;
+        course.price=msg.value;
+
+        }
+
         function activateCourse(bytes32 courseHash) external onlyOwner{
           if(!isCourseCreated(courseHash)){
             revert CourseIsNotCreated();
@@ -91,6 +113,26 @@ contract CourseMarketplace{
 
         }
 
+        function deactivateCourse(bytes32 courseHash) external onlyOwner{
+        // if(!isCourseCreated(courseHash)){
+        //     revert CourseIsNotCreated();
+        // }
+        require(isCourseCreated(courseHash),"Course is not created!");
+        Course storage course = ownedCourses[courseHash];
+        // if(course.state!=State.Purchased){
+        //     revert InvalidState();
+        // }
+
+        require((course.state==State.Purchased),"Invalid state for course activation");
+
+        (bool success,)= course.owner.call{value: course.price}("");
+        require(success,"Transfer failed!");
+
+        course.state=State.Deactivated;
+        course.price=0;
+        
+
+        }
         function transferOwnerShip(address newOwner)external onlyOwner {
             setContractOwner(newOwner);
         }
