@@ -4,6 +4,13 @@ const { catchRevert } = require("./utils/exceptions");
 
 const getBalance = async (address) => await web3.eth.getBalance(address);
 const toBN = (value) => web3.utils.toBN(value);
+const getGas = async (result) => {
+  const tx = await web3.eth.getTransaction(result.tx);
+  const gasUsed = toBN(result.receipt.gasUsed);
+  const gasPrice = toBN(tx.gasPrice);
+  const gas = gasUsed.mul(gasPrice);
+  return gas;
+};
 
 contract("CourseMarketplace", (accounts) => {
   const courseId = "0x00000000000000000000000000003130";
@@ -211,12 +218,14 @@ contract("CourseMarketplace", (accounts) => {
   });
   describe("Can deactivate a course :(Instructor)", () => {
     let courseHash2 = null;
+    let currentOwner = null;
     before(async () => {
       await _contract.purchaseCourse(courseId2, proof2, {
         from: buyer,
         value,
       });
       courseHash2 = await _contract.getCourseHashAtIndex(2);
+      currentOwner = await _contract.getContractOwner();
     });
 
     it("Allows only contract owner to deactivate", async () => {
@@ -226,10 +235,19 @@ contract("CourseMarketplace", (accounts) => {
         })
       );
     });
+
     it("Should have a 'Deactivated' status and price of 0", async () => {
-      await _contract.deactivateCourse(courseHash2, {
+      const balanceBeforeTx = await getBalance(buyer);
+      const contractBalanceBeforeTx = await getBalance(_contract.address);
+      const currentOwnerBalanceBeforeTx = await getBalance(currentOwner);
+      const result = await _contract.deactivateCourse(courseHash2, {
         from: contractOwner,
       });
+      const balanceAfterTx = await getBalance(buyer);
+      const contractBalanceAfterTx = await getBalance(_contract.address);
+      const currentOwnerBalanceAfterTx = await getBalance(currentOwner);
+      const gas = await getGas(result);
+
       const course = await _contract.getCourseByHash(courseHash2);
       const expectedState = 2;
       const expectedPrice = 0;
@@ -240,7 +258,30 @@ contract("CourseMarketplace", (accounts) => {
         "course state not matching 'deactivated' state"
       );
       assert.equal(course.price, expectedPrice, "course price is not 0");
+
+      assert.equal(
+        toBN(balanceBeforeTx).add(toBN(value)).toString(),
+        toBN(balanceAfterTx).toString(),
+        "Buyer balance is not correct!"
+      );
+      assert.equal(
+        toBN(contractBalanceBeforeTx).sub(toBN(value)).toString(),
+        toBN(contractBalanceAfterTx).toString(),
+        "Contract balance is not correct!"
+      );
+      assert.equal(
+        toBN(currentOwnerBalanceAfterTx).add(gas).toString(),
+        toBN(currentOwnerBalanceBeforeTx).toString(),
+        "Current Owner balance is not correct!"
+      );
+      // repetion test
+      assert.equal(
+        toBN(currentOwnerBalanceBeforeTx).sub(gas).toString(),
+        toBN(currentOwnerBalanceAfterTx).toString(),
+        "Current Owner balance is not correct!"
+      );
     });
+
     it("Should NOT activate a deactivated course", async () => {
       await catchRevert(
         _contract.activateCourse(courseHash2, {
@@ -274,16 +315,15 @@ contract("CourseMarketplace", (accounts) => {
 
     it("should be able repurchase with the original buyer", async () => {
       const balanceBeforeTx = await getBalance(buyer);
+      const contractBalanceBeforeTx = await getBalance(_contract.address);
       const result = await _contract.repurchaseCourse(courseHash2, {
         from: buyer,
         value,
       });
-      const tx = await web3.eth.getTransaction(result.tx);
       const balanceAfterTx = await getBalance(buyer);
+      const contractBalanceAfterTx = await getBalance(_contract.address);
 
-      const gasUsed = toBN(result.receipt.gasUsed);
-      const gasPrice = toBN(tx.gasPrice);
-      const gas = gasUsed.mul(gasPrice);
+      const gas = await getGas(result);
 
       const course = await _contract.getCourseByHash(courseHash2);
       const expectedState = 0;
@@ -302,6 +342,17 @@ contract("CourseMarketplace", (accounts) => {
         toBN(balanceBeforeTx).sub(toBN(value)).sub(toBN(gas)).toString(),
         toBN(balanceAfterTx).toString(),
         "Client balance is not correct!"
+      );
+      assert.equal(
+        toBN(contractBalanceAfterTx).sub(toBN(value)).toString(),
+        toBN(contractBalanceBeforeTx).toString(),
+        "Contract balance is not correct!"
+      );
+      // Repetition of above in a different perspective
+      assert.equal(
+        toBN(contractBalanceBeforeTx).add(toBN(value)).toString(),
+        toBN(contractBalanceAfterTx).toString(),
+        "Contract balance is not correct!"
       );
     });
 
