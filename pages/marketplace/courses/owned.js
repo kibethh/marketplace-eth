@@ -1,4 +1,8 @@
-import { useAccount, useOwnedCourses } from "@components/hooks/web3";
+import {
+  useAccount,
+  useOwnedCourses,
+  useWalletInfo,
+} from "@components/hooks/web3";
 import { Button, Message } from "@components/ui/common";
 import { OwnedCourseCard } from "@components/ui/course";
 import { BaseLayout } from "@components/ui/layout";
@@ -10,9 +14,9 @@ import { useWeb3 } from "@components/providers";
 
 export default function OwnedCourses({ courses }) {
   const router = useRouter();
-  const { account } = useAccount();
-  const { ownedCourses } = useOwnedCourses(courses, account.data);
   const { requireInstall } = useWeb3();
+  const { account, network } = useWalletInfo();
+  const { ownedCourses } = useOwnedCourses(courses, account.data, network.data);
 
   return (
     <>
@@ -21,10 +25,10 @@ export default function OwnedCourses({ courses }) {
         {ownedCourses.isEmpty && (
           <div className="w-1/2">
             <Message type="warning">
-              <div>You don't own any courses!</div>
+              <div>You don't own any courses</div>
               <Link href="/marketplace">
                 <a className="font-normal hover:underline">
-                  <i>Purchase course</i>
+                  <i>Purchase Course</i>
                 </a>
               </Link>
             </Message>
@@ -33,18 +37,17 @@ export default function OwnedCourses({ courses }) {
         {account.isEmpty && (
           <div className="w-1/2">
             <Message type="warning">
-              <div>Please connect to metamask!</div>
+              <div>Please connect to Metamask</div>
             </Message>
           </div>
         )}
         {requireInstall && (
           <div className="w-1/2">
             <Message type="warning">
-              <div>Please install metamask!</div>
+              <div>Please install Metamask</div>
             </Message>
           </div>
         )}
-
         {ownedCourses.data?.map((course) => (
           <OwnedCourseCard key={course.id} course={course}>
             <Button onClick={() => router.push(`/courses/${course.slug}`)}>
