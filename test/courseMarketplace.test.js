@@ -362,4 +362,150 @@ contract("CourseMarketplace", (accounts) => {
       );
     });
   });
+
+  describe("Receive funds", () => {
+    it("should have transacted funds", async () => {
+      const value = web3.utils.toWei("0.1", "ether");
+      const contractBalanceBeforeTx = await getBalance(_contract.address);
+      await web3.eth.sendTransaction({
+        from: buyer,
+        to: _contract.address,
+        value,
+      });
+      const contractBalanceAfterTx = await getBalance(_contract.address);
+      const increasedAmount = contractBalanceAfterTx - contractBalanceBeforeTx;
+      assert.equal(
+        value,
+        increasedAmount,
+        "Increased amount is not equal to value sent"
+      );
+      // Repetition
+      assert.equal(
+        toBN(contractBalanceBeforeTx).add(toBN(value)).toString(),
+        toBN(contractBalanceAfterTx).toString(),
+        "Value after transaction is not matching"
+      );
+    });
+  });
+
+  describe("Normal withdraw", () => {
+    const amount = web3.utils.toWei("0.1", "ether");
+    const fundsToDeposit = web3.utils.toWei("0.2", "ether");
+    const overLimitFunds = web3.utils.toWei("1000", "ether");
+    let currentOwner = null;
+    before(async () => {
+      currentOwner = await _contract.getContractOwner();
+      await web3.eth.sendTransaction({
+        from: buyer,
+        to: _contract.address,
+        value: fundsToDeposit,
+      });
+    });
+    it("should fail if withdrawer is not the contract owner", async () => {
+      await catchRevert(_contract.withdraw(amount, { from: buyer }));
+    });
+    it("should not withdraw overlimit value", async () => {
+      await catchRevert(
+        _contract.withdraw(overLimitFunds, { from: currentOwner })
+      );
+    });
+    it("should allow successful withdraw:(ME)", async () => {
+      const currentOwnerBalanceBeforeTx = await getBalance(currentOwner);
+      const result = await _contract.withdraw(amount, { from: currentOwner });
+      const currentOwnerBalanceAfterTx = await getBalance(currentOwner);
+      const gas = await getGas(result);
+      assert.equal(
+        toBN(currentOwnerBalanceBeforeTx).add(toBN(amount)).sub(gas).toString(),
+        toBN(currentOwnerBalanceAfterTx).toString(),
+        "Balances after transactions are the expected ones"
+      );
+    });
+    it("should allow successful withdraw:(Instructor)", async () => {
+      const ownerBalance = await getBalance(currentOwner);
+      const result = await _contract.withdraw(amount, { from: currentOwner });
+      const newOwnerBalance = await getBalance(currentOwner);
+
+      const gas = await getGas(result);
+      assert.equal(
+        toBN(ownerBalance).add(toBN(amount)).sub(gas).toString(),
+        toBN(newOwnerBalance).toString(),
+        "Balances after transactions are the expected ones"
+      );
+    });
+  });
+
+  describe("Emergency withdraw", () => {
+    let currentOwner;
+    before(async () => {
+      currentOwner = await _contract.getContractOwner();
+    });
+    after(async () => {
+      await _contract.resumeContract({ from: currentOwner });
+    });
+
+    it("should fail when contract is not stopped", async () => {
+      await catchRevert(_contract.emergencyWithdraw({ from: currentOwner }));
+    });
+    it("should transfer all contract funds to the contract owner", async () => {
+      await _contract.stopContract({ from: currentOwner });
+      const contractBalance = await getBalance(_contract.address);
+      const ownerBalance = await getBalance(currentOwner);
+
+      const result = await _contract.emergencyWithdraw({ from: currentOwner });
+      const gas = await getGas(result);
+
+      const newContractBalance = await getBalance(_contract.address);
+      const newOwnerBalance = await getBalance(currentOwner);
+      assert.equal(
+        toBN(ownerBalance).add(toBN(contractBalance)).sub(gas).toString(),
+        toBN(newOwnerBalance).toString(),
+        "New owner balance does match the expected balance"
+      );
+    });
+    it("contract balance should be 0", async () => {
+      await _contract.stopContract({ from: currentOwner });
+
+      const contractBalance = await getBalance(_contract.address);
+
+      assert.equal(0, contractBalance, "New Contract balance should be 0");
+    });
+  });
+
+  describe("Self destruct", () => {
+    let currentOwner;
+    before(async () => {
+      currentOwner = await _contract.getContractOwner();
+    });
+
+    it("should fail when contract is not stopped", async () => {
+      await catchRevert(_contract.selfDestruct({ from: currentOwner }));
+    });
+    it("should transfer all contract funds to the contract owner", async () => {
+      await _contract.stopContract({ from: currentOwner });
+      const contractBalance = await getBalance(_contract.address);
+      const ownerBalance = await getBalance(currentOwner);
+
+      const result = await _contract.selfDestruct({ from: currentOwner });
+      const gas = await getGas(result);
+
+      const newOwnerBalance = await getBalance(currentOwner);
+      assert.equal(
+        toBN(ownerBalance).add(toBN(contractBalance)).sub(gas).toString(),
+        toBN(newOwnerBalance).toString(),
+        "New owner balance does match the expected balance"
+      );
+    });
+    it("checks if contract balance is be 0", async () => {
+      await _contract.selfDestruct({ from: currentOwner });
+
+      const contractBalance = await getBalance(_contract.address);
+
+      assert.equal(0, contractBalance, "New Contract balance should be 0");
+    });
+    it("checks if the contract has been destroyed by having 0x bytecode ", async () => {
+      const code = await web3.eth.getCode(_contract.address);
+
+      assert.equal("0x", code, "Contract is not destroyed");
+    });
+  });
 });
