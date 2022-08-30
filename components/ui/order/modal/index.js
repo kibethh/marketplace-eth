@@ -14,20 +14,22 @@ const _createFormState = (isDisabled = false, message = "") => ({
 });
 
 const createFormState = (
-  { price, email, confirmationEmail, isNewPurchase },
-  hasAgreedTOS
+  { price, email, confirmationEmail },
+  hasAgreedTOS,
+  isNewPurchase
 ) => {
   if (!price || Number(price) <= 0) {
     return _createFormState(true, "Price is not valid.");
   }
+
   if (isNewPurchase) {
     if (confirmationEmail.length === 0 || email.length === 0) {
       return _createFormState(true);
-    }
-    if (email !== confirmationEmail) {
+    } else if (email !== confirmationEmail) {
       return _createFormState(true, "Email are not matching.");
     }
   }
+
   if (!hasAgreedTOS) {
     return _createFormState(
       true,
@@ -153,7 +155,6 @@ export default function OrderModal({
                       anywhere
                     </p>
                   </div>
-
                   <div className="my-2 relative rounded-md">
                     <div className="mb-1">
                       <label className="mb-2 font-bold">Repeat Email</label>
@@ -203,7 +204,7 @@ export default function OrderModal({
           <Button
             disabled={formState.isDisabled}
             onClick={() => {
-              onSubmit(order);
+              onSubmit(order, course);
             }}
           >
             Submit

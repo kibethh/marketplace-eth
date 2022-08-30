@@ -4,8 +4,9 @@ import { Button, Message } from "@components/ui/common";
 import { CourseFilter, ManagedCourseCard } from "@components/ui/course";
 import { BaseLayout } from "@components/ui/layout";
 import { MarketHeader } from "@components/ui/marketplace";
-import { useState } from "react";
-import { normalizeOwnedCourse, COURSE_STATES } from "@utils/normalize";
+import { normalizeOwnedCourse } from "@utils/normalize";
+import { withToast } from "@utils/toast";
+import { useEffect, useState } from "react";
 
 const VerificationInput = ({ onVerify }) => {
   const [email, setEmail] = useState("");
@@ -34,14 +35,17 @@ const VerificationInput = ({ onVerify }) => {
 
 export default function ManagedCourses() {
   const [proofedOwnership, setProofedOwnership] = useState({});
+  const [searchedCourse, setSearchedCourse] = useState(null);
+  const [filters, setFilters] = useState({ state: "all" });
   const { web3, contract } = useWeb3();
   const { account } = useAdmin({ redirectTo: "/marketplace" });
   const { managedCourses } = useManagedCourses(account);
-  const [searchedCourse, setSearchedCourse] = useState(null);
-  const [filter, setFilter] = useState({ state: "all" });
 
   const verifyCourse = (email, { hash, proof }) => {
-    if (!email) return;
+    if (!email) {
+      return;
+    }
+
     const emailHash = web3.utils.sha3(email);
     const proofToCheck = web3.utils.soliditySha3(
       { type: "bytes32", value: emailHash },
@@ -61,17 +65,22 @@ export default function ManagedCourses() {
 
   const changeCourseState = async (courseHash, method) => {
     try {
-      await contract.methods[method](courseHash).send({ from: account.data });
+      const result = await contract.methods[method](courseHash).send({
+        from: account.data,
+      });
+
+      return result;
     } catch (e) {
-      console.error(e.message);
+      throw new Error(e.message);
     }
   };
 
   const activateCourse = async (courseHash) => {
-    await changeCourseState(courseHash, "activateCourse");
+    withToast(changeCourseState(courseHash, "activateCourse"));
   };
+
   const deactivateCourse = async (courseHash) => {
-    await changeCourseState(courseHash, "deactivateCourse");
+    withToast(changeCourseState(courseHash, "deactivateCourse"));
   };
 
   const searchCourse = async (hash) => {
@@ -94,8 +103,8 @@ export default function ManagedCourses() {
     return (
       <ManagedCourseCard
         key={course.ownedCourseId}
-        course={course}
         isSearched={isSearched}
+        course={course}
       >
         <VerificationInput
           onVerify={(email) => {
@@ -115,12 +124,12 @@ export default function ManagedCourses() {
             <Message type="danger">Wrong Proof!</Message>
           </div>
         )}
-        {course.state === COURSE_STATES[0] && (
+        {course.state === "purchased" && (
           <div className="mt-2">
-            <Button variant="green" onClick={() => activateCourse(course.hash)}>
+            <Button onClick={() => activateCourse(course.hash)} variant="green">
               Activate
             </Button>
-            <Button variant="red" onClick={() => deactivateCourse(course.hash)}>
+            <Button onClick={() => deactivateCourse(course.hash)} variant="red">
               Deactivate
             </Button>
           </div>
@@ -129,45 +138,35 @@ export default function ManagedCourses() {
     );
   };
 
-  if (!account.isAdmin) return null;
+  if (!account.isAdmin) {
+    return null;
+  }
 
   const filteredCourses = managedCourses.data
-
     ?.filter((course) => {
-      if (filter.state === "all") {
+      if (filters.state === "all") {
         return true;
       }
-      return course.state === filter.state;
-    })
 
+      return course.state === filters.state;
+    })
     .map((course) => renderCard(course));
 
   return (
     <>
       <MarketHeader />
       <CourseFilter
+        onFilterSelect={(value) => setFilters({ state: value })}
         onSearchSubmit={searchCourse}
-        onFilterSelect={(value) => setFilter({ state: value })}
       />
       <section className="grid grid-cols-1">
         {searchedCourse && (
           <div>
-            <h1 className="text-2xl font-bold p-5">Searched Course</h1>
+            <h1 className="text-2xl font-bold p-5">Search</h1>
             {renderCard(searchedCourse, true)}
           </div>
         )}
         <h1 className="text-2xl font-bold p-5">All Courses</h1>
-        {/* {managedCourses.data
-
-          ?.filter((course) => {
-            if (filter.state === "all") {
-              return true;
-            }
-            return course.state === filter.state;
-          })
-
-          .map((course) => renderCard(course))} */}
-
         {filteredCourses}
         {filteredCourses?.length === 0 && (
           <Message type="warning">No courses to display</Message>
